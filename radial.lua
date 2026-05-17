@@ -1,5 +1,5 @@
--- VEX-PRIME 2026 Radial Wheel | Middle Mouse Hold | Image-Matched Visual | Loadstring Ready
--- Hold MouseButton3 (scroll wheel) to open | Release to activate selected option
+-- VEX-PRIME 2026 Radial Wheel | Bright Purple + Black | Mouse-Centered (First-Person Ready) | Loadstring
+-- Hold Middle Mouse Button (scroll wheel click) to open | Release to activate
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -14,12 +14,11 @@ ScreenGui.Name = "VEX_Radial_2026"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- Main radial frame (big bubble like reference image)
+-- Main radial frame - bright purple/black transparent theme
 local RadialFrame = Instance.new("Frame")
 RadialFrame.Size = UDim2.new(0, 400, 0, 400)
-RadialFrame.Position = UDim2.new(0.5, -200, 0.5, -200)
-RadialFrame.BackgroundTransparency = 0.65
-RadialFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 28)
+RadialFrame.BackgroundTransparency = 0.75  -- highly see-through for game visibility
+RadialFrame.BackgroundColor3 = Color3.fromRGB(5, 5, 18)  -- deep black
 RadialFrame.BorderSizePixel = 0
 RadialFrame.Visible = false
 RadialFrame.Parent = ScreenGui
@@ -29,9 +28,9 @@ OuterCorner.CornerRadius = UDim.new(0.5, 0)
 OuterCorner.Parent = RadialFrame
 
 local OuterStroke = Instance.new("UIStroke")
-OuterStroke.Thickness = 4
-OuterStroke.Color = Color3.fromRGB(160, 90, 255)
-OuterStroke.Transparency = 0.35
+OuterStroke.Thickness = 5
+OuterStroke.Color = Color3.fromRGB(200, 0, 255)  -- bright purple
+OuterStroke.Transparency = 0.2
 OuterStroke.Parent = RadialFrame
 
 local CenterLabel = Instance.new("TextLabel")
@@ -39,19 +38,19 @@ CenterLabel.Size = UDim2.new(0.38, 0, 0.38, 0)
 CenterLabel.Position = UDim2.new(0.31, 0, 0.31, 0)
 CenterLabel.BackgroundTransparency = 1
 CenterLabel.Text = "TARGET"
-CenterLabel.TextColor3 = Color3.fromRGB(200, 130, 255)
+CenterLabel.TextColor3 = Color3.fromRGB(200, 0, 255)  -- bright purple
 CenterLabel.TextScaled = true
 CenterLabel.Font = Enum.Font.GothamBold
 CenterLabel.Parent = RadialFrame
 
--- Options (small glowing circles exactly like your image)
+-- Options (glowing purple-tinted circles)
 local Options = {
-    {Name = "Teleport",   Color = Color3.fromRGB(0, 255, 130), Action = "TP"},
-    {Name = "Fling",      Color = Color3.fromRGB(255, 150, 0), Action = "FLING"},
-    {Name = "Loop Fling", Color = Color3.fromRGB(255, 70, 150), Action = "LOOPFLING"},
-    {Name = "Kill",       Color = Color3.fromRGB(255, 50, 50),  Action = "KILL"},
-    {Name = "Spectate",   Color = Color3.fromRGB(80, 190, 255), Action = "SPEC"},
-    {Name = "Unspectate", Color = Color3.fromRGB(170, 170, 170), Action = "UNSPEC"}
+    {Name = "Teleport",   Color = Color3.fromRGB(180, 0, 255), Action = "TP"},
+    {Name = "Fling",      Color = Color3.fromRGB(200, 50, 255), Action = "FLING"},
+    {Name = "Loop Fling", Color = Color3.fromRGB(220, 0, 255), Action = "LOOPFLING"},
+    {Name = "Kill",       Color = Color3.fromRGB(255, 40, 180), Action = "KILL"},
+    {Name = "Spectate",   Color = Color3.fromRGB(140, 0, 255), Action = "SPEC"},
+    {Name = "Unspectate", Color = Color3.fromRGB(170, 170, 255), Action = "UNSPEC"}
 }
 
 local Buttons = {}
@@ -72,8 +71,8 @@ for i, opt in ipairs(Options) do
 
     local BtnStroke = Instance.new("UIStroke")
     BtnStroke.Thickness = 5
-    BtnStroke.Color = Color3.new(1, 1, 1)
-    BtnStroke.Transparency = 0.25
+    BtnStroke.Color = Color3.fromRGB(255, 255, 255)
+    BtnStroke.Transparency = 0.2
     BtnStroke.Parent = BtnFrame
 
     local BtnText = Instance.new("TextLabel")
@@ -85,7 +84,6 @@ for i, opt in ipairs(Options) do
     BtnText.Font = Enum.Font.GothamSemibold
     BtnText.Parent = BtnFrame
 
-    -- Position on circle
     local angle = math.rad((i - 1) * AngleStep - 90)
     local x = Radius * math.cos(angle)
     local y = Radius * math.sin(angle)
@@ -95,11 +93,11 @@ for i, opt in ipairs(Options) do
     Buttons[i] = {Frame = BtnFrame, Data = opt}
 end
 
--- Draggable Close Button (bottom-left)
+-- Draggable Close Button (bottom-left, black/purple)
 local CloseFrame = Instance.new("Frame")
 CloseFrame.Size = UDim2.new(0, 140, 0, 42)
 CloseFrame.Position = UDim2.new(0, 25, 1, -80)
-CloseFrame.BackgroundColor3 = Color3.fromRGB(28, 28, 38)
+CloseFrame.BackgroundColor3 = Color3.fromRGB(5, 5, 18)
 CloseFrame.BorderSizePixel = 0
 CloseFrame.Parent = ScreenGui
 
@@ -107,16 +105,20 @@ local CloseCorner = Instance.new("UICorner")
 CloseCorner.CornerRadius = UDim.new(0, 12)
 CloseCorner.Parent = CloseFrame
 
+local CloseStroke = Instance.new("UIStroke")
+CloseStroke.Thickness = 3
+CloseStroke.Color = Color3.fromRGB(200, 0, 255)
+CloseStroke.Parent = CloseFrame
+
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Size = UDim2.new(1, 0, 1, 0)
 CloseBtn.BackgroundTransparency = 1
 CloseBtn.Text = "✕ CLOSE WHEEL"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 80, 80)
+CloseBtn.TextColor3 = Color3.fromRGB(200, 0, 255)
 CloseBtn.TextScaled = true
 CloseBtn.Font = Enum.Font.GothamBold
 CloseBtn.Parent = CloseFrame
 
--- Standard drag handler
 local function makeDraggable(gui)
     local dragging, dragStart, startPos
     gui.InputBegan:Connect(function(input)
@@ -143,7 +145,7 @@ CloseBtn.MouseButton1Click:Connect(function()
     print("💜 Radial wheel fully terminated.")
 end)
 
--- Target detection & actions (ultra-lightweight FE safe)
+-- Target & lightweight FE actions
 local CurrentTarget = nil
 local function GetNearestPlayer()
     local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -197,7 +199,7 @@ local function PerformAction(action)
     end
 end
 
--- Radial control
+-- Radial logic
 local Selected = nil
 local RenderConn, InputConn
 
@@ -205,9 +207,15 @@ local function ShowRadial()
     CurrentTarget = GetNearestPlayer()
     if not CurrentTarget then return end
     CenterLabel.Text = CurrentTarget.Name:upper()
+
+    -- Position centered on mouse cursor (first-person friendly + "attached" feel)
+    RadialFrame.Position = UDim2.new(0, Mouse.X - 200, 0, Mouse.Y - 200)
     RadialFrame.Visible = true
 
     RenderConn = RunService.RenderStepped:Connect(function()
+        -- Keep wheel centered on current mouse position while held (stays attached to where you're looking)
+        RadialFrame.Position = UDim2.new(0, Mouse.X - 200, 0, Mouse.Y - 200)
+
         local center = RadialFrame.AbsolutePosition + RadialFrame.AbsoluteSize/2
         local dir = Vector2.new(Mouse.X, Mouse.Y) - center
         local ang = math.atan2(dir.Y, dir.X) * (180 / math.pi)
@@ -235,7 +243,7 @@ local function HideRadial(execute)
     Selected = nil
 end
 
--- Middle Mouse hold logic
+-- Middle Mouse hold
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.UserInputType == Enum.UserInputType.MouseButton3 then
@@ -245,8 +253,8 @@ end)
 
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton3 then
-        HideRadial(true) -- true = execute selected action
+        HideRadial(true)
     end
 end)
 
-print("💜 VEX-PRIME Radial Wheel 2026 loaded | Hold Middle Mouse Button")
+print("💜 VEX-PRIME Radial Wheel 2026 loaded | Hold Middle Mouse | Bright Purple + Black Theme")
