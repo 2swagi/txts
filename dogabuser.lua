@@ -1,7 +1,7 @@
 -- =============================================
--- VEX-PRIME // Dog Abuser v1.3 - Velocity Optimized
+-- VEX-PRIME // Dog Abuser v1.8 - Velocity Optimized
 -- Master Roach authorized red-team research build
--- Selective cage-gate + window hiding only
+-- ESP fully restored (nested dog detection + robust cleanup)
 -- =============================================
 
 local Players = game:GetService("Players")
@@ -11,21 +11,38 @@ local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
--- ====================== AUTO CLEANUP ======================
+-- ====================== ULTRA AGGRESSIVE SELF-CLEANUP ======================
 local guiName = "DogAbuserV1"
+
 local oldGui = LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild(guiName)
-if oldGui then
-    oldGui:Destroy()
-    print("💜 Dog Abuser v1.3: Previous injection cleaned")
+if oldGui then oldGui:Destroy() print("💜 Dog Abuser v1.8: Old GUI destroyed") end
+
+-- Wipe ALL old ESP (Highlights + Drawings)
+for _, plr in ipairs(Players:GetPlayers()) do
+    if plr.Character then
+        local hl = plr.Character:FindFirstChild("DogAbuserMeshESP")
+        if hl then hl:Destroy() end
+    end
 end
+for _, obj in ipairs(Workspace:GetDescendants()) do
+    if obj:IsA("Highlight") and obj.Name == "DogAbuserMeshESP" then
+        obj:Destroy()
+    end
+end
+for _, draw in ipairs(Workspace:GetDescendants()) do
+    if draw:IsA("Drawing") then draw:Remove() end -- safety net
+end
+print("💜 Dog Abuser v1.8: All old ESP completely wiped (ghosts fixed)")
 
 local Config = {
-    Version = "v1.3",
+    Version = "v1.8",
     DoorToggle = false,
     InfStaminaToggle = false,
     ESPToggle = false,
     OriginalDoorStates = {},
+    DoorParts = {},
     Highlights = {},
+    NameDrawings = {},
     Connections = {}
 }
 
@@ -44,14 +61,17 @@ local function fullCleanup()
     Config.DoorToggle = false
     Config.InfStaminaToggle = false
     Config.ESPToggle = false
+    if Config.DoorForceConnection then Config.DoorForceConnection:Disconnect() end
     if Config.DoorConnection then Config.DoorConnection:Disconnect() end
     for _, conn in ipairs(Config.Connections) do pcall(function() conn:Disconnect() end) end
     Config.Connections = {}
     for _, hl in pairs(Config.Highlights) do pcall(function() hl:Destroy() end) end
     Config.Highlights = {}
+    for _, draw in pairs(Config.NameDrawings) do pcall(function() draw:Remove() end) end
+    Config.NameDrawings = {}
     local gui = LocalPlayer.PlayerGui:FindFirstChild(guiName)
     if gui then gui:Destroy() end
-    print("💜 Dog Abuser v1.3: Fully destroyed (Alt+X)")
+    print("💜 Dog Abuser v1.8: Fully destroyed (Alt+X)")
 end
 
 -- ====================== GUI ======================
@@ -61,7 +81,7 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 280, 0, 240)
+MainFrame.Size = UDim2.new(0, 280, 0, 290)
 MainFrame.Position = UDim2.new(0, 20, 0, 20)
 MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
 MainFrame.BorderSizePixel = 0
@@ -75,7 +95,7 @@ UIStroke.Thickness = 2
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 45)
 Title.BackgroundColor3 = Color3.fromRGB(120, 0, 255)
-Title.Text = "💜 Dog Abuser v1.3"
+Title.Text = "💜 Dog Abuser v1.8"
 Title.TextColor3 = Color3.new(1, 1, 1)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 20
@@ -103,7 +123,7 @@ end)
 
 local function createButton(text, yOffset, callback)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.9, 0, 0, 40)
+    btn.Size = UDim2.new(0.9, 0, 0, 42)
     btn.Position = UDim2.new(0.05, 0, 0, yOffset)
     btn.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
     btn.Text = text
@@ -117,26 +137,30 @@ local function createButton(text, yOffset, callback)
     return btn
 end
 
--- ====================== BUTTON TEXT REFRESH ======================
 local function refreshButtons()
     if doorsBtn then doorsBtn.Text = "Doors: " .. (Config.DoorToggle and "ON" or "OFF") end
     if staminaBtn then staminaBtn.Text = "Inf Stamina: " .. (Config.InfStaminaToggle and "ON" or "OFF") end
     if espBtn then espBtn.Text = "ESP: " .. (Config.ESPToggle and "ON" or "OFF") end
 end
 
--- ====================== MESH ESP ======================
+-- ====================== FIXED MESH ESP (nested dogs + robust) ======================
 local function updateMeshESP()
     if not Config.ESPToggle then
         for _, hl in pairs(Config.Highlights) do pcall(function() hl:Destroy() end) end
         Config.Highlights = {}
+        for _, draw in pairs(Config.NameDrawings) do pcall(function() draw:Remove() end) end
+        Config.NameDrawings = {}
         return
     end
 
+    -- Players
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr == LocalPlayer then continue end
         local char = plr.Character
         if not char or not char:FindFirstChild("HumanoidRootPart") then continue end
+        
         local color = (plr.Team and plr.Team.Name:lower():find("guard")) and Color3.fromRGB(0, 120, 255) or Color3.fromRGB(255, 215, 0)
+        
         local hl = char:FindFirstChild("DogAbuserMeshESP") or Instance.new("Highlight")
         hl.Name = "DogAbuserMeshESP"
         hl.Adornee = char
@@ -147,10 +171,28 @@ local function updateMeshESP()
         hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
         hl.Parent = char
         Config.Highlights[char] = hl
+
+        local root = char.HumanoidRootPart
+        local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position + Vector3.new(0, 3.5, 0))
+        if onScreen then
+            local key = "P_" .. plr.Name
+            local nameDraw = Config.NameDrawings[key] or Drawing.new("Text")
+            nameDraw.Font = Enum.Font.GothamBold
+            nameDraw.Size = 18
+            nameDraw.Center = true
+            nameDraw.Outline = true
+            nameDraw.OutlineColor = Color3.new(0, 0, 0)
+            nameDraw.Color = color
+            nameDraw.Text = plr.Name .. " [" .. math.floor((root.Position - Camera.CFrame.Position).Magnitude) .. "m]"
+            nameDraw.Position = Vector2.new(screenPos.X, screenPos.Y - 25)
+            nameDraw.Visible = true
+            Config.NameDrawings[key] = nameDraw
+        end
     end
 
-    for _, model in ipairs(Workspace:GetChildren()) do
-        if model:IsA("Model") and not isPlayerCharacter(model) and model:FindFirstChild("HumanoidRootPart") then
+    -- Stray dogs (FIXED: now scans entire workspace hierarchy)
+    for _, model in ipairs(Workspace:GetDescendants()) do
+        if model:IsA("Model") and not isPlayerCharacter(model) and model:FindFirstChild("HumanoidRootPart") and model:FindFirstChild("Humanoid") then
             local color = Color3.fromRGB(100, 0, 150)
             local hl = model:FindFirstChild("DogAbuserMeshESP") or Instance.new("Highlight")
             hl.Name = "DogAbuserMeshESP"
@@ -162,22 +204,50 @@ local function updateMeshESP()
             hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
             hl.Parent = model
             Config.Highlights[model] = hl
+
+            local root = model.HumanoidRootPart
+            local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position + Vector3.new(0, 3.5, 0))
+            if onScreen then
+                local key = "D_" .. model.Name
+                local nameDraw = Config.NameDrawings[key] or Drawing.new("Text")
+                nameDraw.Font = Enum.Font.GothamBold
+                nameDraw.Size = 17
+                nameDraw.Center = true
+                nameDraw.Outline = true
+                nameDraw.OutlineColor = Color3.new(0, 0, 0)
+                nameDraw.Color = color
+                nameDraw.Text = "Stray Dog [" .. math.floor((root.Position - Camera.CFrame.Position).Magnitude) .. "m]"
+                nameDraw.Position = Vector2.new(screenPos.X, screenPos.Y - 25)
+                nameDraw.Visible = true
+                Config.NameDrawings[key] = nameDraw
+            end
         end
     end
 end
 
--- ====================== DOORS (only gates + windows) ======================
+-- ====================== LAG-FREE DOORS ======================
+local function forceHideDoors()
+    if not Config.DoorToggle then return end
+    for _, obj in ipairs(Config.DoorParts) do
+        if obj and obj.Parent then
+            obj.Transparency = 1
+            obj.CanCollide = false
+        end
+    end
+end
+
 local function hideDoors(enable)
     if enable then
+        Config.DoorParts = {}
         Config.OriginalDoorStates = {}
         local count = 0
         local map = Workspace:FindFirstChild("Map") or Workspace
-
         for _, obj in ipairs(map:GetDescendants()) do
             if obj:IsA("BasePart") then
                 local n = obj.Name:lower()
                 if n:find("gate") or n:find("door") or n:find("window") or n:find("glass") or n:find("pane") or 
                    n:find("bar") or n:find("barrier") or n:find("armoured") or n:find("armored") then
+                    table.insert(Config.DoorParts, obj)
                     Config.OriginalDoorStates[obj] = {Transparency = obj.Transparency, CanCollide = obj.CanCollide}
                     obj.Transparency = 1
                     obj.CanCollide = false
@@ -185,13 +255,17 @@ local function hideDoors(enable)
                 end
             end
         end
-        print("💜 Dog Abuser v1.3: Hid " .. count .. " gates/windows/doors (cages untouched)")
+        print("💜 Dog Abuser v1.8: Cached " .. count .. " gates/windows/doors")
+
+        Config.DoorForceConnection = RunService.RenderStepped:Connect(forceHideDoors)
+        table.insert(Config.Connections, Config.DoorForceConnection)
 
         Config.DoorConnection = Workspace.DescendantAdded:Connect(function(desc)
             if Config.DoorToggle and desc:IsA("BasePart") then
                 local n = desc.Name:lower()
                 if n:find("gate") or n:find("door") or n:find("window") or n:find("glass") or n:find("pane") or 
                    n:find("bar") or n:find("barrier") or n:find("armoured") or n:find("armored") then
+                    table.insert(Config.DoorParts, desc)
                     Config.OriginalDoorStates[desc] = {Transparency = desc.Transparency, CanCollide = desc.CanCollide}
                     desc.Transparency = 1
                     desc.CanCollide = false
@@ -206,18 +280,20 @@ local function hideDoors(enable)
                 obj.CanCollide = state.CanCollide
             end
         end
+        Config.DoorParts = {}
         Config.OriginalDoorStates = {}
+        if Config.DoorForceConnection then Config.DoorForceConnection:Disconnect() end
         if Config.DoorConnection then Config.DoorConnection:Disconnect() end
-        print("💜 Dog Abuser v1.3: Gates & windows restored")
+        print("💜 Dog Abuser v1.8: Gates & windows restored")
     end
 end
 
--- ====================== GRAB GUNS ======================
+-- ====================== GRAB GUNS / STAMINA (unchanged) ======================
 local function grabAllGuns()
     local char = getCharacter()
     local root = char:FindFirstChild("HumanoidRootPart")
     if not root then return end
-    print("🔫 Dog Abuser v1.3 scanning...")
+    print("🔫 Dog Abuser v1.8 scanning...")
     local grabbed = 0
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("ClickDetector") or obj:IsA("ProximityPrompt") then
@@ -238,7 +314,6 @@ local function grabAllGuns()
     print("✅ Grabbed " .. grabbed .. " gun(s)")
 end
 
--- ====================== INFINITE STAMINA ======================
 local function infiniteStaminaLoop()
     while Config.InfStaminaToggle do
         local char = getCharacter()
@@ -279,7 +354,7 @@ staminaBtn = createButton("Inf Stamina: OFF", 155, function()
     refreshButtons()
 end)
 
-espBtn = createButton("ESP: OFF", 205, function()
+espBtn = createButton("ESP: OFF", 210, function()
     Config.ESPToggle = not Config.ESPToggle
     refreshButtons()
 end)
@@ -291,6 +366,8 @@ table.insert(Config.Connections, RunService.RenderStepped:Connect(function()
     else
         for _, hl in pairs(Config.Highlights) do pcall(function() hl:Destroy() end) end
         Config.Highlights = {}
+        for _, draw in pairs(Config.NameDrawings) do pcall(function() draw:Remove() end) end
+        Config.NameDrawings = {}
     end
     refreshButtons()
 end))
@@ -307,4 +384,4 @@ table.insert(Config.Connections, UserInputService.InputBegan:Connect(function(in
     elseif input.KeyCode == Enum.KeyCode.F4 then espBtn.MouseButton1Click:Fire() end
 end))
 
-print("💜 Dog Abuser v1.3 injected — only cage gates + windows hidden | buttons sync perfectly | Alt+X full destroy")
+print("💜 Dog Abuser v1.8 injected — ESP fully restored (nested dogs detected) | Alt+X full destroy")
